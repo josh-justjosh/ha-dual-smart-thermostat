@@ -27,6 +27,7 @@ from .const import (
     CONF_SENSOR,
     CONF_SYSTEM_TYPE,
     CONF_TEMP_STEP,
+    DEFAULT_NAME,
     DOMAIN,
     SYSTEM_TYPE_SIMPLE_HEATER,
     SystemType,
@@ -262,7 +263,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
         # Show system type selection with current type as default
         current_system_type = self.collected_config.get(CONF_SYSTEM_TYPE)
-        current_name = self.collected_config.get(CONF_NAME, "Dual Smart Thermostat")
+        current_name = self.collected_config.get(CONF_NAME, DEFAULT_NAME)
 
         return self.async_show_form(
             step_id="reconfigure_confirm",
@@ -951,7 +952,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
     @callback
     def async_config_entry_title(self, options: Mapping[str, Any]) -> str:
         """Return config entry title."""
-        return cast(str, options.get(CONF_NAME, "Dual Smart Thermostat"))
+        return cast(str, options.get(CONF_NAME, DEFAULT_NAME))
 
     @staticmethod
     @callback
@@ -972,7 +973,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             )
 
         return self.async_create_entry(
-            title=import_config.get(CONF_NAME, "Dual Smart Thermostat"),
+            title=import_config.get(CONF_NAME, DEFAULT_NAME),
             data=import_config,
         )
 

@@ -1,6 +1,6 @@
 {
   "domain": "dual_smart_thermostat",
-  "name": "Dual Smart Thermostat",
+  "name": "Dual Smart Thermostat (Custom)",
   "codeowners": [
     "@swingerman"
   ],

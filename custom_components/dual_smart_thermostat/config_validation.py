@@ -17,6 +17,7 @@ from .const import (
     CONF_HUMIDITY_SENSOR,
     CONF_MIN_DUR,
     CONF_SENSOR,
+    DEFAULT_NAME,
     SYSTEM_TYPE_AC_ONLY,
     SYSTEM_TYPE_HEAT_PUMP,
     SYSTEM_TYPE_HEATER_COOLER,
@@ -94,7 +95,7 @@ def _config_dict_to_model(config: dict[str, Any]) -> ThermostatConfig:
         KeyError: If required fields are missing
     """
     system_type = config.get("system_type", SYSTEM_TYPE_SIMPLE_HEATER)
-    name = config.get("name", "Dual Smart Thermostat")
+    name = config.get("name", DEFAULT_NAME)
 
     # Build core settings based on system type
     if system_type == SYSTEM_TYPE_SIMPLE_HEATER:

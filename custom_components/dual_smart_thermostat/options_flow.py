@@ -44,6 +44,7 @@ from .const import (
     CONF_TARGET_TEMP_LOW,
     CONF_TEMP_STEP,
     CONF_USE_APPARENT_TEMP,
+    DEFAULT_NAME,
     SYSTEM_TYPE_AC_ONLY,
     SYSTEM_TYPE_DUAL_STAGE,
     SYSTEM_TYPE_FLOOR_HEATING,
@@ -550,7 +551,7 @@ class OptionsFlowHandler(OptionsFlow):
             step_id="init",
             data_schema=schema,
             description_placeholders={
-                "name": current_config.get("name", "Dual Smart Thermostat")
+                "name": current_config.get("name", DEFAULT_NAME)
             },
         )
 
