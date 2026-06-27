@@ -49,9 +49,11 @@ class OpeningManager:
         self.hass = hass
 
         openings = config.get(CONF_OPENINGS)
-        self.openings_scope: List[OpeningHvacModeScope] = config.get(
-            CONF_OPENINGS_SCOPE
-        ) or [OpeningHvacModeScope.ALL]
+        raw_scope = config.get(CONF_OPENINGS_SCOPE)
+        if raw_scope:
+            self.openings_scope = self._normalize_scopes(raw_scope)
+        else:
+            self.openings_scope = [OpeningHvacModeScope.ALL]
 
         self.openings = self.conform_openings_list(openings) if openings else []
         self.opening_entities = (
@@ -109,11 +111,14 @@ class OpeningManager:
         ) or self.hass.states.is_state(opening_entity, STATE_ON)
 
     def any_opening_open(
-        self, hvac_mode_scope: OpeningHvacModeScope = OpeningHvacModeScope.ALL
+        self, hvac_mode_scope: OpeningHvacModeScope | HVACMode | str | None = None
     ) -> bool:
         """If any opening is currently open for the given HVAC mode scope."""
         _LOGGER.debug("_any_opening_open")
         if not self.openings:
+            return False
+
+        if hvac_mode_scope is None:
             return False
 
         _LOGGER.debug("Checking openings: %s", self.opening_entities)
@@ -146,16 +151,21 @@ class OpeningManager:
     def _opening_applies_to_hvac_mode(
         self,
         opening: TIMED_OPENING_SCHEMA,  # type: ignore
-        hvac_mode_scope: OpeningHvacModeScope,
+        hvac_mode_scope: OpeningHvacModeScope | HVACMode | str,
     ) -> bool:
-        if hvac_mode_scope == OpeningHvacModeScope.ALL:
+        if hvac_mode_scope in (OpeningHvacModeScope.ALL, "all"):
             return True
 
         scopes = self._get_opening_scopes(opening)
         if OpeningHvacModeScope.ALL in scopes:
             return True
 
-        return hvac_mode_scope in scopes
+        mode = (
+            hvac_mode_scope
+            if isinstance(hvac_mode_scope, OpeningHvacModeScope)
+            else OpeningHvacModeScope(hvac_mode_scope)
+        )
+        return mode in scopes
 
     def _is_opening_open(self, opening: TIMED_OPENING_SCHEMA) -> bool:  # type: ignore
         """If the opening is currently open."""

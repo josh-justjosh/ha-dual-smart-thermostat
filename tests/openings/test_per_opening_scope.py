@@ -69,3 +69,25 @@ def test_per_opening_overrides_global_scope(hass):
 
     assert manager.any_opening_open(HVACMode.COOL) is True
     assert manager.any_opening_open(HVACMode.HEAT) is False
+
+
+def test_none_hvac_mode_scope_does_not_crash(hass, opening_manager):
+    """Fan devices may pass hvac_mode=None before mode is assigned."""
+    hass.states.async_set("binary_sensor.bedroom_door", STATE_OPEN)
+    assert opening_manager.any_opening_open(None) is False
+
+
+def test_global_scope_string_normalized(hass):
+    """Global openings_scope stored as a string must not break membership checks."""
+    manager = OpeningManager(
+        hass,
+        {
+            "openings": [{"entity_id": "binary_sensor.window", "scope": "cool"}],
+            "openings_scope": "heat",
+        },
+    )
+    hass.states.async_set("binary_sensor.window", STATE_OPEN)
+
+    assert manager.any_opening_open(HVACMode.COOL) is True
+    assert manager.any_opening_open(HVACMode.HEAT) is False
+    assert manager.any_opening_open(None) is False
