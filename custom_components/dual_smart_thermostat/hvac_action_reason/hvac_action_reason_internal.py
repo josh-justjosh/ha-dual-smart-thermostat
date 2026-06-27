@@ -12,6 +12,8 @@ class HVACActionReasonInternal(enum.StrEnum):
 
     TARGET_TEMP_NOT_REACHED_WITH_FAN = "target_temp_not_reached_with_fan"
 
+    TARGET_TEMP_REACHED_WITH_FAN = "target_temp_reached_with_fan"
+
     TARGET_HUMIDITY_NOT_REACHED = "target_humidity_not_reached"
 
     TARGET_HUMIDITY_REACHED = "target_humidity_reached"

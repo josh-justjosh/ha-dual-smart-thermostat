@@ -74,6 +74,9 @@ CONF_FAN_ON_WITH_AC = "fan_on_with_ac"
 CONF_FAN_HOT_TOLERANCE = "fan_hot_tolerance"
 CONF_FAN_HOT_TOLERANCE_TOGGLE = "fan_hot_tolerance_toggle"
 CONF_FAN_AIR_OUTSIDE = "fan_air_outside"
+CONF_FAN_ON_SETPOINT_REACHED = "fan_on_setpoint_reached"
+CONF_FAN_COLD_TOLERANCE = "fan_cold_tolerance"
+CONF_FAN_ON_SETPOINT_REACHED_TOGGLE = "fan_on_setpoint_reached_toggle"
 
 # Fan speed control
 ATTR_FAN_MODE = "fan_mode"

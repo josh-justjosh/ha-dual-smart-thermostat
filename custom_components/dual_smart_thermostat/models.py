@@ -80,6 +80,8 @@ class FanFeatureSettings:
     fan_on_with_ac: bool = True
     fan_air_outside: bool = False
     fan_hot_tolerance_toggle: bool = False
+    fan_on_setpoint_reached: bool = False
+    fan_cold_tolerance: float = 0
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""

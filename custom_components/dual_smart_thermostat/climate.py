@@ -91,6 +91,9 @@ from .const import (
     CONF_FAN_HOT_TOLERANCE_TOGGLE,
     CONF_FAN_MODE,
     CONF_FAN_ON_WITH_AC,
+    CONF_FAN_ON_SETPOINT_REACHED,
+    CONF_FAN_ON_SETPOINT_REACHED_TOGGLE,
+    CONF_FAN_COLD_TOLERANCE,
     CONF_FLOOR_SENSOR,
     CONF_HEAT_COOL_MODE,
     CONF_HEAT_PUMP_COOLING,
@@ -184,6 +187,9 @@ FAN_MODE_SCHEMA = {
     ),
     vol.Optional(CONF_FAN_HOT_TOLERANCE_TOGGLE): cv.entity_id,
     vol.Optional(CONF_FAN_AIR_OUTSIDE): cv.boolean,
+    vol.Optional(CONF_FAN_ON_SETPOINT_REACHED): cv.boolean,
+    vol.Optional(CONF_FAN_COLD_TOLERANCE): vol.Coerce(float),
+    vol.Optional(CONF_FAN_ON_SETPOINT_REACHED_TOGGLE): cv.entity_id,
 }
 
 OPENINGS_SCHEMA = {

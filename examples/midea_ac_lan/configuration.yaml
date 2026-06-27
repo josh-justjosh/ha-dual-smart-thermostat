@@ -1,0 +1,19 @@
+# Midea AC LAN + Dual Smart Thermostat example
+#
+# Replace entity IDs with your Midea device IDs from Settings → Devices & Services.
+# The Midea climate entity ID format is: climate.{device_id}_climate
+
+climate:
+  - platform: dual_smart_thermostat
+    name: "Bedroom AC Smart"
+    heater: climate.1234567890_climate
+    ac_mode: true
+    target_sensor: sensor.bedroom_temperature
+    initial_hvac_mode: cool
+    target_temp: 24
+    hot_tolerance: 0.5
+    cold_tolerance: 0.3
+    fan_on_setpoint_reached: true
+    fan_cold_tolerance: 0.5
+    min_cycle_duration:
+      minutes: 5

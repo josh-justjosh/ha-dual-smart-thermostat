@@ -30,6 +30,9 @@ from ..const import (
     CONF_FAN_HOT_TOLERANCE_TOGGLE,
     CONF_FAN_MODE,
     CONF_FAN_ON_WITH_AC,
+    CONF_FAN_ON_SETPOINT_REACHED,
+    CONF_FAN_ON_SETPOINT_REACHED_TOGGLE,
+    CONF_FAN_COLD_TOLERANCE,
     CONF_HEAT_COOL_MODE,
     CONF_HEAT_PUMP_COOLING,
     CONF_HEATER,
@@ -63,6 +66,11 @@ class FeatureManager(StateManager):
         self._fan_tolerance = config.get(CONF_FAN_HOT_TOLERANCE)
         self._fan_air_outside = config.get(CONF_FAN_AIR_OUTSIDE)
         self._fan_tolerance_on_entity_id = config.get(CONF_FAN_HOT_TOLERANCE_TOGGLE)
+        self._fan_on_setpoint_reached = config.get(CONF_FAN_ON_SETPOINT_REACHED, False)
+        self._fan_cold_tolerance = config.get(CONF_FAN_COLD_TOLERANCE)
+        self._fan_on_setpoint_reached_toggle = config.get(
+            CONF_FAN_ON_SETPOINT_REACHED_TOGGLE
+        )
 
         self._dryer_entity_id = config.get(CONF_DRYER)
         self._humidity_sensor_entity_id = config.get(CONF_HUMIDITY_SENSOR)
@@ -198,6 +206,14 @@ class FeatureManager(StateManager):
     @property
     def fan_hot_tolerance_on_entity(self) -> bool:
         return self._fan_tolerance_on_entity_id
+
+    @property
+    def is_configured_for_fan_on_setpoint_reached(self) -> bool:
+        return bool(self._fan_on_setpoint_reached)
+
+    @property
+    def fan_on_setpoint_reached_toggle_entity(self):
+        return self._fan_on_setpoint_reached_toggle
 
     @property
     def is_configured_for_dryer_mode(self) -> bool:

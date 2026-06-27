@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
+from homeassistant.components.climate import DOMAIN as CLIMATE_DOMAIN
 from homeassistant.components.input_boolean import DOMAIN as INPUT_BOOLEAN_DOMAIN
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
@@ -33,6 +34,9 @@ from .const import (
     CONF_FAN_HOT_TOLERANCE_TOGGLE,
     CONF_FAN_MODE,
     CONF_FAN_ON_WITH_AC,
+    CONF_FAN_ON_SETPOINT_REACHED,
+    CONF_FAN_ON_SETPOINT_REACHED_TOGGLE,
+    CONF_FAN_COLD_TOLERANCE,
     CONF_FLOOR_SENSOR,
     CONF_HEAT_COOL_MODE,
     CONF_HEAT_PUMP_COOLING,
@@ -335,7 +339,7 @@ def get_basic_ac_schema(hass=None, defaults=None, include_name=True):
             CONF_HEATER,
             default=defaults.get(CONF_HEATER) if defaults else vol.UNDEFINED,
         )
-    ] = get_entity_selector([SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN])
+    ] = get_entity_selector([SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN, CLIMATE_DOMAIN])
 
     # Tolerance fields OUTSIDE section (so defaults are pre-filled in UI)
     core_schema.update(
@@ -343,6 +347,31 @@ def get_basic_ac_schema(hass=None, defaults=None, include_name=True):
             hass=hass, defaults=defaults, include_heat_cool_tolerance=False
         )
     )
+
+    core_schema[
+        vol.Optional(
+            CONF_FAN_HOT_TOLERANCE,
+            default=defaults.get(CONF_FAN_HOT_TOLERANCE, vol.UNDEFINED),
+        )
+    ] = get_tolerance_selector(hass=hass, min_value=0.1, max_value=10.0, step=0.05)
+    core_schema[
+        vol.Optional(
+            CONF_FAN_ON_SETPOINT_REACHED,
+            default=defaults.get(CONF_FAN_ON_SETPOINT_REACHED, False),
+        )
+    ] = get_boolean_selector()
+    core_schema[
+        vol.Optional(
+            CONF_FAN_COLD_TOLERANCE,
+            default=defaults.get(CONF_FAN_COLD_TOLERANCE, 0),
+        )
+    ] = get_tolerance_selector(hass=hass, min_value=0, max_value=10.0, step=0.05)
+    core_schema[
+        vol.Optional(
+            CONF_FAN_ON_SETPOINT_REACHED_TOGGLE,
+            default=defaults.get(CONF_FAN_ON_SETPOINT_REACHED_TOGGLE, vol.UNDEFINED),
+        )
+    ] = get_entity_selector([INPUT_BOOLEAN_DOMAIN, BINARY_SENSOR_DOMAIN])
 
     # Timing fields in collapsible section (less commonly changed)
     timing_fields = get_timing_fields_for_section(
@@ -812,7 +841,7 @@ def get_core_schema(
                 CONF_HEATER,
                 default=defaults.get(CONF_HEATER) or defaults.get(CONF_COOLER),
             )
-        ] = get_entity_selector([SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN])
+        ] = get_entity_selector([SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN, CLIMATE_DOMAIN])
     else:
         # Heater is required unless system explicitly hides it
         schema_dict[vol.Required(CONF_HEATER, default=defaults.get(CONF_HEATER))] = (
@@ -973,6 +1002,20 @@ def get_fan_schema(hass=None, defaults: dict[str, Any] | None = None):
             vol.Optional(
                 CONF_FAN_HOT_TOLERANCE_TOGGLE,
                 default=defaults.get(CONF_FAN_HOT_TOLERANCE_TOGGLE, vol.UNDEFINED),
+            ): get_entity_selector([INPUT_BOOLEAN_DOMAIN, BINARY_SENSOR_DOMAIN]),
+            vol.Optional(
+                CONF_FAN_ON_SETPOINT_REACHED,
+                default=defaults.get(CONF_FAN_ON_SETPOINT_REACHED, False),
+            ): get_boolean_selector(),
+            vol.Optional(
+                CONF_FAN_COLD_TOLERANCE,
+                default=defaults.get(CONF_FAN_COLD_TOLERANCE, 0),
+            ): get_tolerance_selector(
+                hass=hass, min_value=0, max_value=10.0, step=0.05
+            ),
+            vol.Optional(
+                CONF_FAN_ON_SETPOINT_REACHED_TOGGLE,
+                default=defaults.get(CONF_FAN_ON_SETPOINT_REACHED_TOGGLE, vol.UNDEFINED),
             ): get_entity_selector([INPUT_BOOLEAN_DOMAIN, BINARY_SENSOR_DOMAIN]),
         }
     )

@@ -17,6 +17,8 @@ from ..const import (
     CONF_INITIAL_HVAC_MODE,
     CONF_MIN_DUR,
 )
+from ..hvac_controller.climate_controller import is_climate_entity
+from ..hvac_device.climate_cooler_device import ClimateCoolerDevice
 from ..hvac_device.controllable_hvac_device import ControlableHVACDevice
 from ..hvac_device.cooler_device import CoolerDevice
 from ..hvac_device.cooler_fan_device import CoolerFanDevice
@@ -270,20 +272,32 @@ class HVACDeviceFactory:
         hvac_power: HvacPowerManager,
         cooler_entitiy_id: str,
         fan_device: FanDevice | None,
-    ) -> CoolerDevice:
+    ) -> CoolerDevice | ClimateCoolerDevice | CoolerFanDevice:
 
-        cooler_device = CoolerDevice(
-            self.hass,
-            cooler_entitiy_id,
-            self._min_cycle_duration,
-            self._initial_hvac_mode,
-            environment,
-            openings,
-            self._features,
-            hvac_power,
-        )
+        if is_climate_entity(cooler_entitiy_id):
+            cooler_device = ClimateCoolerDevice(
+                self.hass,
+                cooler_entitiy_id,
+                self._min_cycle_duration,
+                self._initial_hvac_mode,
+                environment,
+                openings,
+                self._features,
+                hvac_power,
+            )
+        else:
+            cooler_device = CoolerDevice(
+                self.hass,
+                cooler_entitiy_id,
+                self._min_cycle_duration,
+                self._initial_hvac_mode,
+                environment,
+                openings,
+                self._features,
+                hvac_power,
+            )
 
-        if fan_device:
+        if fan_device and fan_device.entity_id != cooler_entitiy_id:
             cooler_device = CoolerFanDevice(
                 self.hass,
                 [cooler_device, fan_device],

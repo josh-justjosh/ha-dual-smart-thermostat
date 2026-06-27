@@ -25,6 +25,8 @@ from ..const import (
     CONF_COOL_TOLERANCE,
     CONF_DRY_TOLERANCE,
     CONF_FAN_HOT_TOLERANCE,
+    CONF_FAN_COLD_TOLERANCE,
+    CONF_FAN_ON_SETPOINT_REACHED,
     CONF_FLOOR_SENSOR,
     CONF_HEAT_COOL_MODE,
     CONF_HEAT_TOLERANCE,
@@ -127,6 +129,7 @@ class EnvironmentManager(StateManager):
         self._heat_tolerance = config.get(CONF_HEAT_TOLERANCE)
         self._cool_tolerance = config.get(CONF_COOL_TOLERANCE)
         self._fan_hot_tolerance = config.get(CONF_FAN_HOT_TOLERANCE)
+        self._fan_cold_tolerance = config.get(CONF_FAN_COLD_TOLERANCE) or 0
 
         self._hvac_mode = None
         self._saved_target_temp = self.target_temp or None
@@ -317,6 +320,10 @@ class EnvironmentManager(StateManager):
         return self._fan_hot_tolerance
 
     @property
+    def fan_cold_tolerance(self) -> float:
+        return self._fan_cold_tolerance
+
+    @property
     def max_humidity(self) -> float:
         return self._max_himidity
 
@@ -502,6 +509,20 @@ class EnvironmentManager(StateManager):
             self._cur_temp >= too_hot_for_ac_temp
             and self._cur_temp <= too_hot_for_fan_temp
         )
+
+    def is_within_post_cool_fan_band(self, target_attr="_target_temp") -> bool:
+        """True when room temp is in the comfort band for post-cool fan circulation."""
+        if self._cur_temp is None:
+            return False
+        target_temp = getattr(self, target_attr)
+        if target_temp is None:
+            return False
+
+        cold_tolerance, hot_tolerance = self._get_active_tolerance_for_mode(target_attr)
+        lower_bound = target_temp - cold_tolerance - self._fan_cold_tolerance
+        upper_bound = target_temp + hot_tolerance
+
+        return lower_bound <= self._cur_temp < upper_bound
 
     @property
     def is_warmer_outside(self) -> bool:

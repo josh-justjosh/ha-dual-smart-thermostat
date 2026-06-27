@@ -46,6 +46,20 @@ class CoolerFanDevice(MultiHvacDevice):
             _LOGGER.error("Fan or cooler device is not found")
 
         self._set_fan_hot_tolerance_on_state()
+        self._set_fan_on_setpoint_reached_on_state()
+
+    def _set_fan_on_setpoint_reached_on_state(self):
+        toggle = self._features.fan_on_setpoint_reached_toggle_entity
+        if toggle is None:
+            self._fan_on_setpoint_reached_on = True
+        elif isinstance(toggle, bool):
+            self._fan_on_setpoint_reached_on = toggle
+        else:
+            state = self.hass.states.get(toggle)
+            if state is None:
+                self._fan_on_setpoint_reached_on = True
+            else:
+                self._fan_on_setpoint_reached_on = state.state == STATE_ON
 
     def _set_fan_hot_tolerance_on_state(self):
         if self._features.fan_hot_tolerance_on_entity is not None:
@@ -86,36 +100,43 @@ class CoolerFanDevice(MultiHvacDevice):
         await super().async_on_startup(async_write_ha_state_cb)
 
         # Only track state changes if it's an entity_id (string), not a boolean
+        toggle_entities = []
         if self._features.fan_hot_tolerance_on_entity is not None and isinstance(
             self._features.fan_hot_tolerance_on_entity, str
         ):
+            toggle_entities.append(self._features.fan_hot_tolerance_on_entity)
+        if self._features.fan_on_setpoint_reached_toggle_entity is not None and isinstance(
+            self._features.fan_on_setpoint_reached_toggle_entity, str
+        ):
+            toggle_entities.append(
+                self._features.fan_on_setpoint_reached_toggle_entity
+            )
+        if toggle_entities:
             self.async_on_remove(
                 async_track_state_change_event(
                     self.hass,
-                    [self._features.fan_hot_tolerance_on_entity],
-                    self._async_fan_hot_tolerance_on_changed,
+                    toggle_entities,
+                    self._async_fan_tolerance_toggle_changed,
                 )
             )
+
+    async def _async_fan_tolerance_toggle_changed(
+        self, event: Event[EventStateChangedData]
+    ):
+        data = event.data
+        new_state = data["new_state"]
+        _LOGGER.info("Fan tolerance toggle changed: %s", new_state)
+        self._set_fan_hot_tolerance_on_state()
+        self._set_fan_on_setpoint_reached_on_state()
+        if new_state is None or new_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return
+        await self.async_control_hvac()
+        self._async_write_ha_state_cb()
 
     async def _async_fan_hot_tolerance_on_changed(
         self, event: Event[EventStateChangedData]
     ):
-        data = event.data
-
-        new_state = data["new_state"]
-
-        _LOGGER.info("Fan hot tolerance on changed: %s", new_state)
-
-        if new_state is None or new_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
-            self._fan_hot_tolerance_on = True
-            return
-
-        self._fan_hot_tolerance_on = new_state.state == STATE_ON
-
-        _LOGGER.debug("fan_hot_tolerance_on is %s", self._fan_hot_tolerance_on)
-
-        await self.async_control_hvac()
-        self._async_write_ha_state_cb()
+        await self._async_fan_tolerance_toggle_changed(event)
 
     async def _async_check_device_initial_state(self) -> None:
         """Prevent the device from keep running if HVACMode.OFF."""
@@ -125,6 +146,7 @@ class CoolerFanDevice(MultiHvacDevice):
         _LOGGER.info({self.__class__.__name__})
         _LOGGER.debug("hvac_mode: %s", self._hvac_mode)
         self._set_fan_hot_tolerance_on_state()
+        self._set_fan_on_setpoint_reached_on_state()
         _LOGGER.debug(
             "async_control_hvac fan_hot_tolerance_on: %s", self._fan_hot_tolerance_on
         )
@@ -164,7 +186,12 @@ class CoolerFanDevice(MultiHvacDevice):
         # to ignore cycles as we switch between the fan and cooler device
         # and we want to avoid idle time gaps between the devices
         force_override = (
-            True if self.environment.fan_hot_tolerance is not None else force
+            True
+            if (
+                self.environment.fan_hot_tolerance is not None
+                or self._features.is_configured_for_fan_on_setpoint_reached
+            )
+            else force
         )
 
         has_cooler_run_long_enough = (
@@ -197,6 +224,44 @@ class CoolerFanDevice(MultiHvacDevice):
             _LOGGER.debug("outside fan tolerance")
             _LOGGER.debug("fan_hot_tolerance_on: %s", self._fan_hot_tolerance_on)
             await self.cooler_device.async_control_hvac(time, force_override)
-            if self.fan_device.is_active:
-                await self.fan_device.async_turn_off()
-            self.HVACActionReason = self.cooler_device.HVACActionReason
+            if self._should_run_post_cool_fan():
+                self.fan_device.hvac_mode = HVACMode.FAN_ONLY
+                await self.fan_device.async_control_hvac(time, force_override)
+                if self.cooler_device.is_active:
+                    await self.cooler_device.async_turn_off()
+                self.HVACActionReason = HVACActionReason.TARGET_TEMP_REACHED_WITH_FAN
+            elif self._should_force_post_cool_handoff():
+                await self.cooler_device.async_turn_off()
+                self.fan_device.hvac_mode = HVACMode.FAN_ONLY
+                await self.fan_device.async_control_hvac(time, force_override)
+                self.HVACActionReason = HVACActionReason.TARGET_TEMP_REACHED_WITH_FAN
+            else:
+                if self.fan_device.is_active:
+                    await self.fan_device.async_turn_off()
+                self.HVACActionReason = self.cooler_device.HVACActionReason
+
+    def _should_force_post_cool_handoff(self) -> bool:
+        if not self._features.is_configured_for_fan_on_setpoint_reached:
+            return False
+        if not self._fan_on_setpoint_reached_on:
+            return False
+        if self.environment.is_too_hot(self.fan_device.target_env_attr):
+            return False
+        if not self.cooler_device.is_active:
+            return False
+        return self.environment.is_within_post_cool_fan_band(
+            self.fan_device.target_env_attr
+        )
+
+    def _should_run_post_cool_fan(self) -> bool:
+        if not self._features.is_configured_for_fan_on_setpoint_reached:
+            return False
+        if not self._fan_on_setpoint_reached_on:
+            return False
+        if self.environment.is_too_hot(self.fan_device.target_env_attr):
+            return False
+        if self.cooler_device.is_active:
+            return False
+        return self.environment.is_within_post_cool_fan_band(
+            self.fan_device.target_env_attr
+        )
