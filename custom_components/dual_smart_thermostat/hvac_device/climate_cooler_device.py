@@ -124,8 +124,13 @@ class ClimateCoolerDevice(CoolerDevice, ClimateHvacDeviceMixin):
         return self._climate_state in (HVACMode.COOL, HVACMode.FAN_ONLY)
 
     @property
+    def is_active(self) -> bool:
+        """True when the climate unit is cooling or circulating (fan_only)."""
+        return self._climate_is_running()
+
+    @property
     def is_on(self) -> bool:
-        return self.hvac_controller.is_active
+        return self.is_active
 
     @property
     def hvac_action(self) -> HVACAction:

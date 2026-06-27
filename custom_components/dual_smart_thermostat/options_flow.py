@@ -59,6 +59,7 @@ from .feature_steps import (
     OpeningsSteps,
     PresetsSteps,
 )
+from .schemas import get_ac_fan_circulation_schema
 from .schema_utils import get_tolerance_selector
 
 _LOGGER = logging.getLogger(__name__)
@@ -97,6 +98,7 @@ class OptionsFlowHandler(OptionsFlow):
             "dual_stage_options_shown",
             "floor_options_shown",
             "features_shown",
+            "ac_fan_circulation_options_shown",
             "fan_options_shown",
             "humidity_options_shown",
             "openings_options_shown",
@@ -530,6 +532,7 @@ class OptionsFlowHandler(OptionsFlow):
             step_flags = [
                 "dual_stage_options_shown",
                 "floor_options_shown",
+                "ac_fan_circulation_options_shown",
                 "fan_options_shown",
                 "humidity_options_shown",
                 "openings_options_shown",
@@ -584,7 +587,15 @@ class OptionsFlowHandler(OptionsFlow):
             self.collected_config["floor_options_shown"] = True
             return await self.async_step_floor_options()
 
-        # Show fan options if fan is configured
+        # Show fan circulation options for AC-only and heater+cooler systems
+        if (
+            system_type in (SYSTEM_TYPE_AC_ONLY, SYSTEM_TYPE_HEATER_COOLER)
+            and "ac_fan_circulation_options_shown" not in self.collected_config
+        ):
+            self.collected_config["ac_fan_circulation_options_shown"] = True
+            return await self.async_step_ac_fan_circulation_options()
+
+        # Show fan options if a separate fan entity is configured
         if (
             current_config.get(CONF_FAN)
             and "fan_options_shown" not in self.collected_config
@@ -763,6 +774,22 @@ class OptionsFlowHandler(OptionsFlow):
             self.collected_config,
             self._determine_options_next_step,
             current_config,
+        )
+
+    async def async_step_ac_fan_circulation_options(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle fan circulation runtime options."""
+        current_config = {**self._get_current_config(), **self.collected_config}
+        if user_input is not None:
+            self.collected_config.update(user_input)
+            return await self._determine_options_next_step()
+
+        return self.async_show_form(
+            step_id="ac_fan_circulation_options",
+            data_schema=get_ac_fan_circulation_schema(
+                hass=self.hass, defaults=current_config
+            ),
         )
 
     async def async_step_fan_options(

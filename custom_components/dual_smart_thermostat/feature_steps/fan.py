@@ -58,11 +58,14 @@ class FanSteps:
             )
             return await next_step_handler()
 
-        # Use the shared context in case schema factories need hass/current values
-        _LOGGER.debug("Fan config - Showing form with no defaults (new config)")
+        _LOGGER.debug("Fan config - Showing form with defaults from collected_config")
         return flow_instance.async_show_form(
             step_id="fan",
-            data_schema=get_fan_schema(hass=flow_instance.hass),
+            data_schema=get_fan_schema(
+                hass=flow_instance.hass,
+                defaults=collected_config,
+                require_fan_entity=True,
+            ),
         )
 
     async def async_step_options(

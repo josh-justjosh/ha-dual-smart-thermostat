@@ -33,6 +33,7 @@
         "error": {
             "same_heater_sensor": "Heater and temperature sensor cannot be the same entity",
             "same_heater_cooler": "Heater and cooler cannot be the same entity",
+            "climate_actuator_unsupported": "The selected climate entity must support cool, fan_only, and off modes",
             "aux_heater_timeout_required": "Auxiliary heater timeout is required when auxiliary heater is configured",
             "aux_heater_entity_required": "Auxiliary heater entity is required when timeout is configured"
         },
@@ -104,23 +105,15 @@
                     "target_sensor": "Temperature sensor",
                     "cold_tolerance": "Cold tolerance",
                     "hot_tolerance": "Hot tolerance",
-                    "min_cycle_duration": "Minimum cycle duration",
-                    "fan_hot_tolerance": "Fan hot tolerance",
-                    "fan_on_setpoint_reached": "Fan on setpoint reached",
-                    "fan_cold_tolerance": "Fan cold tolerance",
-                    "fan_on_setpoint_reached_toggle": "Fan on setpoint toggle"
+                    "min_cycle_duration": "Minimum cycle duration"
                 },
                 "data_description": {
                     "name": "[Basic Information] Name of the thermostat entity (default: Dual Smart).",
                     "target_sensor": "[Sensors] Entity ID for temperature sensor that reflects the current temperature. The sensor state must be temperature.",
-                    "heater": "[Control Devices] Entity ID for the air conditioner (switch or climate entity such as Midea AC). Used for cooling when temperature rises above target.",
-                    "cold_tolerance": "[Temperature Settings] Minimum temperature difference between sensor reading and target before turning on heating. For example, if target is 25°C and tolerance is 0.5°C, heater starts when sensor reaches 24.5°C or below (default: 0.3°C).",
-                    "hot_tolerance": "[Temperature Settings] Minimum temperature difference between sensor reading and target before turning off heating or turning on cooling. For example, if target is 25°C and tolerance is 0.5°C, heater stops when sensor reaches 25.5°C or above (default: 0.3°C).",
-                    "min_cycle_duration": "[Temperature Settings] Minimum time the switch must stay in its current state before being switched. Prevents rapid on/off cycling and protects equipment.",
-                    "fan_hot_tolerance": "Temperature band above target where fan runs before the compressor (pre-cool staging).",
-                    "fan_on_setpoint_reached": "When enabled, switch to fan-only circulation after the cooling target is reached instead of turning fully off.",
-                    "fan_cold_tolerance": "Extra band below target where post-cool fan may still run before turning off.",
-                    "fan_on_setpoint_reached_toggle": "Optional input_boolean to enable or disable fan-on-setpoint-reached at runtime."
+                    "heater": "[Control Devices] Entity ID for the air conditioner — a switch or a climate entity such as Midea AC LAN.",
+                    "cold_tolerance": "[Temperature Settings] Minimum temperature difference between sensor reading and target before turning off cooling (default: 0.3°C).",
+                    "hot_tolerance": "[Temperature Settings] Minimum temperature difference between sensor reading and target before turning on cooling (default: 0.3°C).",
+                    "min_cycle_duration": "[Temperature Settings] Minimum time the cooling device must stay in its current state before switching."
                 },
                 "sections": {
                     "advanced_settings": {
@@ -141,18 +134,38 @@
                     }
                 }
             },
+            "ac_fan_circulation": {
+                "title": "Fan circulation",
+                "description": "{actuator_hint}",
+                "data": {
+                    "fan_on_setpoint_reached": "Fan on setpoint reached",
+                    "fan_cold_tolerance": "Fan cold tolerance",
+                    "fan_on_setpoint_reached_toggle": "Fan on setpoint toggle",
+                    "fan_hot_tolerance": "Fan hot tolerance",
+                    "fan_hot_tolerance_toggle": "Fan tolerance toggle",
+                    "fan_air_outside": "Use outside air for fan staging"
+                },
+                "data_description": {
+                    "fan_on_setpoint_reached": "After the cooling target is reached, switch to fan-only circulation instead of turning fully off. Works with climate entities (Midea AC) and separate fan switches.",
+                    "fan_cold_tolerance": "Extra band below the setpoint where post-cool fan may still run before turning off.",
+                    "fan_on_setpoint_reached_toggle": "Optional input_boolean to enable or disable fan-on-setpoint-reached at runtime.",
+                    "fan_hot_tolerance": "Temperature band above target where fan runs before the compressor engages (pre-cool staging).",
+                    "fan_hot_tolerance_toggle": "Optional input_boolean to enable or disable pre-cool fan staging at runtime.",
+                    "fan_air_outside": "Only use fan staging when outside air is cooler than inside. Requires an outside temperature sensor."
+                }
+            },
             "features": {
                 "title": "Features Configuration",
                 "description": "Choose which features to configure for your system. This determines which configuration options will be available.",
                 "data": {
-                    "configure_fan": "Configure fan settings",
+                    "configure_fan": "Configure a separate fan switch",
                     "configure_humidity": "Configure humidity control",
                     "configure_openings": "Configure window/door sensors",
                     "configure_presets": "Configure temperature presets",
                     "configure_floor_heating": "Configure floor heating protection"
                 },
                 "data_description": {
-                    "configure_fan": "Enable configuration of fan settings. This allows you to set up a separate fan entity that can run independently for air circulation.",
+                    "configure_fan": "Add a separate fan switch entity for staging or circulation. Not required when using a climate entity (e.g. Midea AC) with fan circulation on the previous step.",
                     "configure_humidity": "Enable configuration of humidity monitoring and control. This allows you to set up humidity sensors and dry mode operation.",
                     "configure_openings": "Enable configuration of window and door sensors so the thermostat can pause operation when openings are detected.",
                     "configure_presets": "Enable configuration of temperature presets like Away, Comfort, and Eco for quick mode changes.",
@@ -161,7 +174,7 @@
             },
             "heater_cooler": {
                 "title": "Basic Configuration",
-                "description": "Configure your heating and cooling system with separate switches, organized by category.",
+                "description": "Configure heating and cooling. Use a switch for the heater and a switch or climate entity (e.g. Midea AC) for the cooler. {actuator_hint}",
                 "data": {
                     "name": "Name",
                     "heater": "Heater switch",
@@ -176,7 +189,7 @@
                     "name": "[Basic Information] Name of the thermostat entity (default: Dual Smart).",
                     "target_sensor": "[Sensors] Entity ID for temperature sensor that reflects the current temperature. The sensor state must be temperature.",
                     "heater": "[Control Devices] Entity ID for heater switch, must be a toggle device. Used for heating when temperature falls below target.",
-                    "cooler": "[Control Devices] Entity ID for cooler/AC switch, must be a toggle device. Used for cooling when temperature rises above target. Can be the same as heater for heat pump systems.",
+                    "cooler": "[Control Devices] Cooler switch or climate entity (e.g. Midea AC). Used for cooling when temperature rises above the high target. Must support cool, fan_only, and off when using a climate entity.",
                     "heat_cool_mode": "[Control Settings] Enable heat/cool mode with dual temperature control. When enabled, allows automatic switching between heating and cooling to maintain a comfortable temperature range.",
                     "cold_tolerance": "[Temperature Settings] Minimum temperature difference between sensor reading and target before turning on heating. Creates a buffer zone to prevent frequent switching.",
                     "hot_tolerance": "[Temperature Settings] Minimum temperature difference between sensor reading and target before turning on cooling. Creates a buffer zone to prevent frequent switching.",
@@ -732,14 +745,14 @@
                 "title": "Features Configuration",
                 "description": "Choose which features to configure for your system. This determines which configuration options will be available.",
                 "data": {
-                    "configure_fan": "Configure fan settings",
+                    "configure_fan": "Configure a separate fan switch",
                     "configure_humidity": "Configure humidity control",
                     "configure_openings": "Configure window/door sensors",
                     "configure_presets": "Configure temperature presets",
                     "configure_floor_heating": "Configure floor heating protection"
                 },
                 "data_description": {
-                    "configure_fan": "Enable configuration of fan settings. This allows you to set up a separate fan entity that can run independently for air circulation.",
+                    "configure_fan": "Add a separate fan switch entity for staging or circulation. Not required when using a climate entity (e.g. Midea AC) with fan circulation on the previous step.",
                     "configure_humidity": "Enable configuration of humidity monitoring and control. This allows you to set up humidity sensors and dry mode operation.",
                     "configure_openings": "Enable configuration of window and door sensors so the thermostat can pause operation when openings are detected.",
                     "configure_presets": "Enable configuration of temperature presets like Away, Comfort, and Eco for quick mode changes.",
@@ -810,6 +823,26 @@
                     "floor_sensor": "Entity ID for floor temperature sensor. Monitors floor temperature for safety and control.",
                     "max_floor_temp": "Maximum allowed floor temperature for protection. Prevents damage to flooring materials. (Default: 28°C)",
                     "min_floor_temp": "Minimum floor temperature to maintain. Provides freeze protection for the floor heating system. (Default: 5°C)"
+                }
+            },
+            "ac_fan_circulation_options": {
+                "title": "Fan circulation",
+                "description": "Adjust fan staging and post-cool circulation behavior.",
+                "data": {
+                    "fan_on_setpoint_reached": "Fan on setpoint reached",
+                    "fan_cold_tolerance": "Fan cold tolerance",
+                    "fan_on_setpoint_reached_toggle": "Fan on setpoint toggle",
+                    "fan_hot_tolerance": "Fan hot tolerance",
+                    "fan_hot_tolerance_toggle": "Fan tolerance toggle",
+                    "fan_air_outside": "Use outside air for fan staging"
+                },
+                "data_description": {
+                    "fan_on_setpoint_reached": "After the cooling target is reached, switch to fan-only circulation instead of turning fully off.",
+                    "fan_cold_tolerance": "Extra band below the setpoint where post-cool fan may still run before turning off.",
+                    "fan_on_setpoint_reached_toggle": "Optional input_boolean to enable or disable fan-on-setpoint-reached at runtime.",
+                    "fan_hot_tolerance": "Temperature band above target where fan runs before the compressor engages.",
+                    "fan_hot_tolerance_toggle": "Optional input_boolean to enable or disable pre-cool fan staging at runtime.",
+                    "fan_air_outside": "Only use fan staging when outside air is cooler than inside."
                 }
             },
             "fan_options": {

@@ -41,6 +41,7 @@ from .feature_steps import (
 )
 from .flow_utils import EntityValidator
 from .schemas import (
+    get_ac_fan_circulation_schema,
     get_additional_sensors_schema,
     get_base_schema,
     get_basic_ac_schema,
@@ -94,6 +95,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             "dual_stage_options_shown",
             "floor_options_shown",
             "features_shown",
+            "ac_fan_circulation_shown",
             "fan_options_shown",
             "humidity_options_shown",
             "openings_options_shown",
@@ -309,7 +311,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                     user_input.update(advanced_settings)
 
             if not await self._validate_basic_config(user_input):
-                errors = EntityValidator.get_validation_errors(user_input)
+                errors = EntityValidator.get_validation_errors(user_input, self.hass)
             else:
                 # For AC-only systems, force AC mode to true
                 if system_type == SystemType.AC_ONLY:
@@ -355,7 +357,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                     user_input.update(advanced_settings)
 
             if not await self._validate_basic_config(user_input):
-                errors = EntityValidator.get_validation_errors(user_input)
+                errors = EntityValidator.get_validation_errors(user_input, self.hass)
             else:
                 user_input[CONF_AC_MODE] = True
 
@@ -369,7 +371,31 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         )
 
         return self.async_show_form(
-            step_id="basic_ac_only", data_schema=schema, errors=errors
+            step_id="basic_ac_only",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders=EntityValidator.climate_actuator_description_placeholders(
+                self.collected_config
+            ),
+        )
+
+    async def async_step_ac_fan_circulation(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure fan circulation for AC-only and heater+cooler systems."""
+        if user_input is not None:
+            self.collected_config.update(user_input)
+            return await self._determine_next_step()
+
+        schema = get_ac_fan_circulation_schema(
+            hass=self.hass, defaults=self.collected_config
+        )
+        return self.async_show_form(
+            step_id="ac_fan_circulation",
+            data_schema=schema,
+            description_placeholders=EntityValidator.climate_actuator_description_placeholders(
+                self.collected_config
+            ),
         )
 
     async def async_step_features(
@@ -434,6 +460,8 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                     errors["base"] = "same_heater_sensor"
                 elif heater and cooler and heater == cooler:
                     errors["base"] = "same_heater_cooler"
+                else:
+                    errors = EntityValidator.get_validation_errors(user_input, self.hass)
             else:
                 self.collected_config.update(user_input)
                 return await self._determine_next_step()
@@ -448,6 +476,9 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             step_id="heater_cooler",
             data_schema=schema,
             errors=errors,
+            description_placeholders=EntityValidator.climate_actuator_description_placeholders(
+                self.collected_config
+            ),
         )
 
     async def async_step_heat_pump(
@@ -623,7 +654,11 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="fan",
-            data_schema=get_fan_schema(hass=self.hass),
+            data_schema=get_fan_schema(
+                hass=self.hass,
+                defaults=self.collected_config,
+                require_fan_entity=True,
+            ),
         )
 
     async def async_step_humidity(
@@ -706,7 +741,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
     async def _validate_basic_config(self, user_input: dict[str, Any]) -> bool:
         """Validate basic configuration."""
-        return EntityValidator.validate_basic_config(user_input)
+        return EntityValidator.validate_basic_config(user_input, self.hass)
 
     async def _determine_next_step(self) -> FlowResult:
         """Determine the next step based on configuration dependencies.
@@ -717,6 +752,15 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         3. Feature configuration must be ordered based on dependencies
         """
         system_type = self.collected_config.get("system_type")
+
+        # Fan circulation step before optional features (AC-only and heater+cooler)
+        if (
+            system_type in (SystemType.AC_ONLY, SystemType.HEATER_COOLER)
+            and "ac_fan_circulation_shown" not in self.collected_config
+        ):
+            self.collected_config["ac_fan_circulation_shown"] = True
+            return await self.async_step_ac_fan_circulation()
+
         # Show features configuration for all systems (when not already shown)
         if "features_shown" not in self.collected_config:
             self.collected_config["features_shown"] = True
@@ -867,7 +911,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         if CONF_FLOOR_SENSOR in self.collected_config:
             feature_defaults["configure_floor_heating"] = True
 
-        # Fan: detected by presence of fan entity
+        # Fan: detected by presence of a separate fan entity
         if CONF_FAN in self.collected_config:
             feature_defaults["configure_fan"] = True
 
@@ -906,13 +950,13 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             self.collected_config.pop("min_floor_temp", None)
             _LOGGER.debug("Floor heating unchecked - clearing floor sensor config")
 
-        # Fan unchecked - clear fan entity and related settings
+        # Fan unchecked - clear separate fan entity settings only
         if not user_input.get("configure_fan", False):
             self.collected_config.pop(CONF_FAN, None)
             self.collected_config.pop("fan_mode", None)
-            self.collected_config.pop("fan_hot_tolerance", None)
             self.collected_config.pop("fan_on_with_ac", None)
-            _LOGGER.debug("Fan unchecked - clearing fan config")
+            self.collected_config.pop("fan_air_outside", None)
+            _LOGGER.debug("Fan unchecked - clearing separate fan entity config")
 
         # Humidity unchecked - clear humidity sensor and related settings
         if not user_input.get("configure_humidity", False):

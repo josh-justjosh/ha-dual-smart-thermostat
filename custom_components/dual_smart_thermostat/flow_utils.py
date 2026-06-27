@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from homeassistant.components.climate.const import ATTR_HVAC_MODES, HVACMode
+from homeassistant.core import HomeAssistant
+
 from .const import (
     ATTR_CLOSING_TIMEOUT,
     ATTR_OPENING_TIMEOUT,
@@ -12,45 +15,61 @@ from .const import (
     CONF_OPENINGS_SCOPE,
     CONF_SENSOR,
 )
+from .hvac_controller.climate_controller import is_climate_entity
+
+_CLIMATE_COOLER_MODES = frozenset(
+    {HVACMode.COOL, HVACMode.FAN_ONLY, HVACMode.OFF}
+)
 
 
 class EntityValidator:
     """Validator for entity configurations."""
 
     @staticmethod
-    def validate_basic_config(user_input: dict[str, Any]) -> bool:
+    def validate_basic_config(
+        user_input: dict[str, Any], hass: HomeAssistant | None = None
+    ) -> bool:
         """Validate basic configuration.
 
         Args:
             user_input: User input data
+            hass: Home Assistant instance (required for climate actuator checks)
 
         Returns:
             True if validation passes, False otherwise
         """
-        # Validate that heater and sensor are different entities
-        heater = user_input.get(CONF_HEATER)
-        sensor = user_input.get(CONF_SENSOR)
-        if heater and sensor and heater == sensor:
+        if EntityValidator.get_validation_errors(user_input, hass):
             return False
-
-        # Validate that heater and cooler are different if both specified
-        cooler = user_input.get(CONF_COOLER)
-        if heater and cooler and heater == cooler:
-            return False
-
         return True
 
     @staticmethod
-    def get_validation_errors(user_input: dict[str, Any]) -> dict[str, str]:
+    def validate_climate_actuator(hass: HomeAssistant, entity_id: str) -> bool:
+        """Return True when a climate entity supports cooler actuator modes."""
+        if not is_climate_entity(entity_id):
+            return True
+
+        state = hass.states.get(entity_id)
+        if state is None:
+            return False
+
+        supported = state.attributes.get(ATTR_HVAC_MODES) or []
+        supported_set = {str(mode) for mode in supported}
+        return _CLIMATE_COOLER_MODES.issubset(supported_set)
+
+    @staticmethod
+    def get_validation_errors(
+        user_input: dict[str, Any], hass: HomeAssistant | None = None
+    ) -> dict[str, str]:
         """Get specific validation errors for user input.
 
         Args:
             user_input: User input data
+            hass: Home Assistant instance (required for climate actuator checks)
 
         Returns:
             Dictionary of field errors
         """
-        errors = {}
+        errors: dict[str, str] = {}
         heater = user_input.get(CONF_HEATER)
         sensor = user_input.get(CONF_SENSOR)
         cooler = user_input.get(CONF_COOLER)
@@ -59,8 +78,53 @@ class EntityValidator:
             errors["base"] = "same_heater_sensor"
         elif heater and cooler and heater == cooler:
             errors["base"] = "same_heater_cooler"
+        elif (
+            hass is not None
+            and heater
+            and is_climate_entity(heater)
+            and not EntityValidator.validate_climate_actuator(hass, heater)
+        ):
+            errors[CONF_HEATER] = "climate_actuator_unsupported"
+        elif (
+            hass is not None
+            and cooler
+            and is_climate_entity(cooler)
+            and not EntityValidator.validate_climate_actuator(hass, cooler)
+        ):
+            errors[CONF_COOLER] = "climate_actuator_unsupported"
 
         return errors
+
+    @staticmethod
+    def climate_actuator_description_placeholders(
+        user_input: dict[str, Any],
+    ) -> dict[str, str]:
+        """Build description placeholders for climate vs switch actuators."""
+        cooler = user_input.get(CONF_COOLER) if user_input else None
+        heater = user_input.get(CONF_HEATER) if user_input else None
+        climate_actuator = None
+        if cooler and is_climate_entity(cooler):
+            climate_actuator = cooler
+        elif heater and is_climate_entity(heater):
+            climate_actuator = heater
+
+        if climate_actuator:
+            return {
+                "actuator_type": "climate",
+                "actuator_hint": (
+                    "You selected a climate entity (e.g. Midea AC) as the cooler. "
+                    "Fan circulation can use the unit's built-in fan_only mode — a "
+                    "separate fan switch is optional."
+                ),
+            }
+        return {
+            "actuator_type": "switch",
+            "actuator_hint": (
+                "For switch-based coolers, enable fan circulation here only if you "
+                "also add a separate fan entity in Features. Climate entities "
+                "(e.g. Midea AC) use built-in fan_only mode when selected as cooler."
+            ),
+        }
 
 
 class OpeningsProcessor:

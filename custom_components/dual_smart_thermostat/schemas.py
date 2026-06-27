@@ -348,31 +348,6 @@ def get_basic_ac_schema(hass=None, defaults=None, include_name=True):
         )
     )
 
-    core_schema[
-        vol.Optional(
-            CONF_FAN_HOT_TOLERANCE,
-            default=defaults.get(CONF_FAN_HOT_TOLERANCE, vol.UNDEFINED),
-        )
-    ] = get_tolerance_selector(hass=hass, min_value=0.1, max_value=10.0, step=0.05)
-    core_schema[
-        vol.Optional(
-            CONF_FAN_ON_SETPOINT_REACHED,
-            default=defaults.get(CONF_FAN_ON_SETPOINT_REACHED, False),
-        )
-    ] = get_boolean_selector()
-    core_schema[
-        vol.Optional(
-            CONF_FAN_COLD_TOLERANCE,
-            default=defaults.get(CONF_FAN_COLD_TOLERANCE, 0),
-        )
-    ] = get_tolerance_selector(hass=hass, min_value=0, max_value=10.0, step=0.05)
-    core_schema[
-        vol.Optional(
-            CONF_FAN_ON_SETPOINT_REACHED_TOGGLE,
-            default=defaults.get(CONF_FAN_ON_SETPOINT_REACHED_TOGGLE, vol.UNDEFINED),
-        )
-    ] = get_entity_selector([INPUT_BOOLEAN_DOMAIN, BINARY_SENSOR_DOMAIN])
-
     # Timing fields in collapsible section (less commonly changed)
     timing_fields = get_timing_fields_for_section(
         defaults=defaults, include_keep_alive=True
@@ -383,6 +358,41 @@ def get_basic_ac_schema(hass=None, defaults=None, include_name=True):
         )
 
     return vol.Schema(core_schema)
+
+
+def get_ac_fan_circulation_schema(
+    hass=None, defaults: dict[str, Any] | None = None
+) -> vol.Schema:
+    """Fan circulation settings for AC-only and heater+cooler systems."""
+    defaults = defaults or {}
+    return vol.Schema(
+        {
+            vol.Optional(
+                CONF_FAN_ON_SETPOINT_REACHED,
+                default=defaults.get(CONF_FAN_ON_SETPOINT_REACHED, False),
+            ): get_boolean_selector(),
+            vol.Optional(
+                CONF_FAN_COLD_TOLERANCE,
+                default=defaults.get(CONF_FAN_COLD_TOLERANCE, 0),
+            ): get_tolerance_selector(hass=hass, min_value=0, max_value=10.0, step=0.05),
+            vol.Optional(
+                CONF_FAN_ON_SETPOINT_REACHED_TOGGLE,
+                default=defaults.get(CONF_FAN_ON_SETPOINT_REACHED_TOGGLE, vol.UNDEFINED),
+            ): get_entity_selector([INPUT_BOOLEAN_DOMAIN, BINARY_SENSOR_DOMAIN]),
+            vol.Optional(
+                CONF_FAN_HOT_TOLERANCE,
+                default=defaults.get(CONF_FAN_HOT_TOLERANCE, vol.UNDEFINED),
+            ): get_tolerance_selector(hass=hass, min_value=0.1, max_value=10.0, step=0.05),
+            vol.Optional(
+                CONF_FAN_HOT_TOLERANCE_TOGGLE,
+                default=defaults.get(CONF_FAN_HOT_TOLERANCE_TOGGLE, vol.UNDEFINED),
+            ): get_entity_selector([INPUT_BOOLEAN_DOMAIN, BINARY_SENSOR_DOMAIN]),
+            vol.Optional(
+                CONF_FAN_AIR_OUTSIDE,
+                default=defaults.get(CONF_FAN_AIR_OUTSIDE, False),
+            ): get_boolean_selector(),
+        }
+    )
 
 
 def get_simple_heater_schema(hass=None, defaults=None, include_name=True):
@@ -465,13 +475,13 @@ def get_heater_cooler_schema(hass=None, defaults=None, include_name=True):
         )
     ] = get_entity_selector([SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN])
 
-    # Cooler switch
+    # Cooler switch or climate entity (e.g. Midea AC)
     core_schema[
         vol.Required(
             CONF_COOLER,
             default=defaults.get(CONF_COOLER) if defaults else vol.UNDEFINED,
         )
-    ] = get_entity_selector([SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN])
+    ] = get_entity_selector([SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN, CLIMATE_DOMAIN])
 
     # Heat/Cool mode toggle
     core_schema[
@@ -852,7 +862,9 @@ def get_core_schema(
         if system_type == "heater_cooler":
             schema_dict[
                 vol.Optional(CONF_COOLER, default=defaults.get(CONF_COOLER))
-            ] = get_entity_selector([SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN])
+            ] = get_entity_selector(
+                [SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN, CLIMATE_DOMAIN]
+            )
 
             # Expose heat/cool mode toggle when using the core schema for
             # heater+cooler combinations so the options flow (which often
@@ -959,12 +971,18 @@ def get_openings_schema(selected_entities: list[str]):
     return vol.Schema(schema_dict)
 
 
-def get_fan_schema(hass=None, defaults: dict[str, Any] | None = None):
+def get_fan_schema(
+    hass=None,
+    defaults: dict[str, Any] | None = None,
+    *,
+    require_fan_entity: bool = True,
+):
     """Get fan configuration schema.
 
     Args:
         hass: HomeAssistant instance for temperature unit detection
         defaults: Optional defaults dict to pre-populate selectors (used by options flow)
+        require_fan_entity: When False, fan entity is optional (circulation-only settings)
 
     Returns:
         Schema with fan configuration fields
@@ -979,9 +997,15 @@ def get_fan_schema(hass=None, defaults: dict[str, Any] | None = None):
         defaults.get(CONF_FAN_AIR_OUTSIDE),
     )
 
+    fan_entity_field = (
+        vol.Required(CONF_FAN, default=defaults.get(CONF_FAN))
+        if require_fan_entity
+        else vol.Optional(CONF_FAN, default=defaults.get(CONF_FAN))
+    )
+
     return vol.Schema(
         {
-            vol.Required(CONF_FAN, default=defaults.get(CONF_FAN)): get_entity_selector(
+            fan_entity_field: get_entity_selector(
                 [SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN]
             ),
             vol.Optional(

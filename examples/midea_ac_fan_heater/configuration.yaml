@@ -1,0 +1,31 @@
+# Fan heater (switch) + Midea AC (climate) with heat/cool mode
+#
+# Replace entity IDs with yours from Settings → Devices & Services.
+
+climate:
+  - platform: dual_smart_thermostat
+    name: "Living Room"
+
+    # Dumb fan heater on a smart switch
+    heater: switch.fan_heater
+
+    # Midea AC LAN climate entity (cool + fan_only)
+    cooler: climate.1234567890_climate
+
+    target_sensor: sensor.living_room_temperature
+
+    # Automatic heat ↔ cool within a comfort band
+    heat_cool_mode: true
+    initial_hvac_mode: heat_cool
+    target_temp_low: 20
+    target_temp_high: 24
+
+    cold_tolerance: 0.3
+    hot_tolerance: 0.5
+
+    min_cycle_duration:
+      minutes: 5
+
+    # Post-cool circulation on the Midea unit (fan_only after target high reached)
+    fan_on_setpoint_reached: true
+    fan_cold_tolerance: 0.5
