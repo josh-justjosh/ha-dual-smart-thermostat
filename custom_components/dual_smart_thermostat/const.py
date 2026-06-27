@@ -77,6 +77,7 @@ CONF_FAN_AIR_OUTSIDE = "fan_air_outside"
 CONF_FAN_ON_SETPOINT_REACHED = "fan_on_setpoint_reached"
 CONF_FAN_COLD_TOLERANCE = "fan_cold_tolerance"
 CONF_FAN_ON_SETPOINT_REACHED_TOGGLE = "fan_on_setpoint_reached_toggle"
+CONF_FAN_TOGGLE = "fan_toggle"
 
 # Fan speed control
 ATTR_FAN_MODE = "fan_mode"
@@ -123,6 +124,18 @@ CONF_PRECISION = "precision"
 CONF_TEMP_STEP = "target_temp_step"
 CONF_OPENINGS = "openings"
 CONF_OPENINGS_SCOPE = "openings_scope"
+CONF_OPENING_SCOPE = "scope"
+
+_OPENING_SCOPE_VALUES = (
+    "all",
+    "off",
+    "heat",
+    "cool",
+    "heat_cool",
+    "fan_only",
+    "dry",
+    "auto",
+)
 CONF_HEAT_COOL_MODE = "heat_cool_mode"
 CONF_HEAT_PUMP_COOLING = "heat_pump_cooling"
 
@@ -175,6 +188,10 @@ TIMED_OPENING_SCHEMA = vol.Schema(
         ),
         vol.Optional(ATTR_CLOSING_TIMEOUT): vol.All(
             cv.time_period, cv.positive_timedelta
+        ),
+        vol.Optional(CONF_OPENING_SCOPE): vol.Any(
+            vol.In(_OPENING_SCOPE_VALUES),
+            [vol.In(_OPENING_SCOPE_VALUES)],
         ),
     }
 )

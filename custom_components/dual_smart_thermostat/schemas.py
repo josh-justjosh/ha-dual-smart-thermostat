@@ -10,6 +10,7 @@ from typing import Any
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.components.climate import DOMAIN as CLIMATE_DOMAIN
+from homeassistant.components.fan import DOMAIN as FAN_DOMAIN
 from homeassistant.components.input_boolean import DOMAIN as INPUT_BOOLEAN_DOMAIN
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.switch import DOMAIN as SWITCH_DOMAIN
@@ -37,6 +38,7 @@ from .const import (
     CONF_FAN_ON_SETPOINT_REACHED,
     CONF_FAN_ON_SETPOINT_REACHED_TOGGLE,
     CONF_FAN_COLD_TOLERANCE,
+    CONF_FAN_TOGGLE,
     CONF_FLOOR_SENSOR,
     CONF_HEAT_COOL_MODE,
     CONF_HEAT_PUMP_COOLING,
@@ -1006,7 +1008,7 @@ def get_fan_schema(
     return vol.Schema(
         {
             fan_entity_field: get_entity_selector(
-                [SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN]
+                [SWITCH_DOMAIN, INPUT_BOOLEAN_DOMAIN, FAN_DOMAIN]
             ),
             vol.Optional(
                 CONF_FAN_MODE, default=defaults.get(CONF_FAN_MODE, False)
@@ -1040,6 +1042,10 @@ def get_fan_schema(
             vol.Optional(
                 CONF_FAN_ON_SETPOINT_REACHED_TOGGLE,
                 default=defaults.get(CONF_FAN_ON_SETPOINT_REACHED_TOGGLE, vol.UNDEFINED),
+            ): get_entity_selector([INPUT_BOOLEAN_DOMAIN, BINARY_SENSOR_DOMAIN]),
+            vol.Optional(
+                CONF_FAN_TOGGLE,
+                default=defaults.get(CONF_FAN_TOGGLE, vol.UNDEFINED),
             ): get_entity_selector([INPUT_BOOLEAN_DOMAIN, BINARY_SENSOR_DOMAIN]),
         }
     )

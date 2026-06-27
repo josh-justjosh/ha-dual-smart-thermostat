@@ -5,6 +5,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from homeassistant.components.climate.const import (
+    ATTR_SWING_MODES,
     PRESET_NONE,
     ClimateEntityFeature,
     HVACMode,
@@ -33,6 +34,7 @@ from ..const import (
     CONF_FAN_ON_SETPOINT_REACHED,
     CONF_FAN_ON_SETPOINT_REACHED_TOGGLE,
     CONF_FAN_COLD_TOLERANCE,
+    CONF_FAN_TOGGLE,
     CONF_HEAT_COOL_MODE,
     CONF_HEAT_PUMP_COOLING,
     CONF_HEATER,
@@ -40,6 +42,7 @@ from ..const import (
     CONF_HVAC_POWER_LEVELS,
     CONF_HVAC_POWER_TOLERANCE,
 )
+from ..hvac_controller.climate_controller import is_climate_entity
 from ..managers.environment_manager import EnvironmentManager
 from ..managers.state_manager import StateManager
 from ..preset_env.preset_env import PresetEnv
@@ -71,6 +74,7 @@ class FeatureManager(StateManager):
         self._fan_on_setpoint_reached_toggle = config.get(
             CONF_FAN_ON_SETPOINT_REACHED_TOGGLE
         )
+        self._fan_toggle = config.get(CONF_FAN_TOGGLE)
 
         self._dryer_entity_id = config.get(CONF_DRYER)
         self._humidity_sensor_entity_id = config.get(CONF_HUMIDITY_SENSOR)
@@ -216,6 +220,45 @@ class FeatureManager(StateManager):
         return self._fan_on_setpoint_reached_toggle
 
     @property
+    def fan_toggle_entity(self):
+        """Optional input_boolean gating a separate room fan (not the AC fan)."""
+        return self._fan_toggle
+
+    @property
+    def climate_actuator_entity_id(self) -> str | None:
+        """Climate entity driven as cooler or AC-only actuator."""
+        if self._cooler_entity_id and is_climate_entity(self._cooler_entity_id):
+            return self._cooler_entity_id
+        if (
+            self._ac_mode
+            and self._heater_entity_id
+            and is_climate_entity(self._heater_entity_id)
+        ):
+            return self._heater_entity_id
+        return None
+
+    @property
+    def supports_climate_swing_mode(self) -> bool:
+        entity_id = self.climate_actuator_entity_id
+        if entity_id is None:
+            return False
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return False
+        supported = state.attributes.get(ATTR_SUPPORTED_FEATURES, 0)
+        return bool(supported & ClimateEntityFeature.SWING_MODE)
+
+    @property
+    def climate_swing_modes(self) -> list[str]:
+        entity_id = self.climate_actuator_entity_id
+        if entity_id is None:
+            return []
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return []
+        return list(state.attributes.get(ATTR_SWING_MODES) or [])
+
+    @property
     def is_configured_for_dryer_mode(self) -> bool:
         """Determines if the dryer mode is configured."""
         return (
@@ -313,6 +356,9 @@ class FeatureManager(StateManager):
         # Add FAN_MODE feature if fan device supports speed control
         if self.supports_fan_mode:
             self._supported_features |= ClimateEntityFeature.FAN_MODE
+
+        if self.supports_climate_swing_mode:
+            self._supported_features |= ClimateEntityFeature.SWING_MODE
 
     def apply_old_state(
         self, old_state: State | None, hvac_mode: HVACMode | None = None, presets=[]

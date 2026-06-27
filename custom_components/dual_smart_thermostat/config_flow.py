@@ -956,6 +956,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             self.collected_config.pop("fan_mode", None)
             self.collected_config.pop("fan_on_with_ac", None)
             self.collected_config.pop("fan_air_outside", None)
+            self.collected_config.pop("fan_toggle", None)
             _LOGGER.debug("Fan unchecked - clearing separate fan entity config")
 
         # Humidity unchecked - clear humidity sensor and related settings

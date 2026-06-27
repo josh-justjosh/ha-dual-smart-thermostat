@@ -82,6 +82,7 @@ class FanFeatureSettings:
     fan_hot_tolerance_toggle: bool = False
     fan_on_setpoint_reached: bool = False
     fan_cold_tolerance: float = 0
+    fan_toggle: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -122,6 +123,7 @@ class OpeningConfig:
     entity_id: str
     timeout_open: int = 30  # seconds
     timeout_close: int = 30  # seconds
+    scope: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""

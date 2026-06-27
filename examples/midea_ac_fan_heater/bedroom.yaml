@@ -1,0 +1,49 @@
+# Bedroom: fan heater + Midea AC + room fan
+#
+# Entities:
+#   switch.bedroom_heater  — dumb fan heater
+#   climate.bedroom_ac     — Midea AC (cool + fan_only + swing)
+#   fan.bed                — separate room fan
+#
+# Create an input_boolean for the room fan toggle, e.g.:
+#   input_boolean:
+#     bedroom_fan:
+#       name: Bedroom fan assist
+
+climate:
+  - platform: dual_smart_thermostat
+    name: "Bedroom"
+
+    heater: switch.bedroom_heater
+    cooler: climate.bedroom_ac
+
+    target_sensor: sensor.bedroom_multi_sensor_air_temperature
+
+    heat_cool_mode: true
+    initial_hvac_mode: heat_cool
+    target_temp_low: 20
+    target_temp_high: 24
+
+    precision: 0.5
+    target_temp_step: 0.5
+
+    cold_tolerance: 0.3
+    hot_tolerance: 0.5
+    min_cycle_duration:
+      minutes: 5
+
+    # AC switches to fan_only after cooling target is reached
+    fan_on_setpoint_reached: true
+    fan_cold_tolerance: 0.5
+
+    # Separate room fan — only runs during post-cool when toggle is on
+    fan: fan.bed
+    fan_on_with_ac: false
+    fan_toggle: input_boolean.bedroom_fan
+
+    # Per-opening scope: door stops cooling, draught stops heating
+    openings:
+      - entity_id: binary_sensor.bedroom_door
+        scope: cool
+      - entity_id: binary_sensor.bedroom_draught
+        scope: heat

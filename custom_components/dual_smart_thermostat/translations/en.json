@@ -430,10 +430,11 @@
                     "fan_hot_tolerance_toggle": "Fan tolerance toggle",
                     "fan_on_setpoint_reached": "Fan on setpoint reached",
                     "fan_cold_tolerance": "Fan cold tolerance",
-                    "fan_on_setpoint_reached_toggle": "Fan on setpoint toggle"
+                    "fan_on_setpoint_reached_toggle": "Fan on setpoint toggle",
+                    "fan_toggle": "Room fan toggle"
                 },
                 "data_description": {
-                    "fan": "Entity ID for fan switch. Used to control air circulation and improve temperature distribution throughout the space.",
+                    "fan": "Entity ID for a separate room fan (switch or fan entity). Optional when the cooler is a climate entity with built-in fan_only.",
                     "fan_mode": "Enable fan as a separate HVAC mode. When enabled, FAN mode becomes available in addition to heat, cool, and auto modes, allowing fan-only operation.",
                     "fan_on_with_ac": "Automatically turn on fan when cooling (AC) is active. Improves cooling efficiency and air circulation during cooling cycles.",
                     "fan_air_outside": "Enable outside air circulation when outside temperature is more favorable than inside temperature. Requires outside temperature sensor to be configured for intelligent outside air usage.",
@@ -441,7 +442,8 @@
                     "fan_hot_tolerance_toggle": "Optional entity ID for input_boolean to dynamically enable/disable the fan_hot_tolerance feature. When off, AC is used immediately instead of trying fan first. When not configured, the fan_hot_tolerance feature is always enabled.",
                     "fan_on_setpoint_reached": "When enabled, run fan-only circulation after the cooling target is reached.",
                     "fan_cold_tolerance": "Extra band below target where post-cool fan may still run.",
-                    "fan_on_setpoint_reached_toggle": "Optional input_boolean to toggle fan-on-setpoint-reached at runtime."
+                    "fan_on_setpoint_reached_toggle": "Optional input_boolean to toggle fan-on-setpoint-reached at runtime.",
+                    "fan_toggle": "Optional input_boolean to enable the separate room fan during post-cool circulation. The AC uses its own fan_only mode; this toggle controls the extra room fan independently."
                 }
             },
             "humidity": {

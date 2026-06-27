@@ -21,6 +21,27 @@ This example covers a common setup:
 - A room temperature sensor
 - A smart switch controlling your fan heater
 
+## Bedroom example (your entities)
+
+See [bedroom.yaml](bedroom.yaml) for a ready-to-use config with:
+
+| Entity | Role |
+|--------|------|
+| `switch.bedroom_heater` | Fan heater |
+| `climate.bedroom_ac` | Midea AC (cooling + swing passthrough) |
+| `fan.bed` | Separate room fan |
+| `input_boolean.bedroom_fan` | Toggle for the room fan during post-cool |
+
+**Swing:** set vertical swing on the dual-smart thermostat card — it passes through to `climate.bedroom_ac`.
+
+**Fans after cooling:**
+- AC → `fan_only` when `fan_on_setpoint_reached: true`
+- Room fan (`fan.bed`) → runs only when `fan_toggle` input_boolean is on
+
+**Openings (per sensor scope):**
+- `binary_sensor.bedroom_door` with `scope: cool` — pauses cooling only
+- `binary_sensor.bedroom_draught` with `scope: heat` — pauses heating only
+
 ## Setup via UI
 
 1. **Settings → Devices & Services → Add Integration → Dual Smart Thermostat**

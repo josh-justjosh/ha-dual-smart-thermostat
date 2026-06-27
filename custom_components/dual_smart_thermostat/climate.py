@@ -11,9 +11,11 @@ from homeassistant.components.climate import (
     ClimateEntity,
     HVACAction,
     HVACMode,
+    SERVICE_SET_SWING_MODE,
 )
 from homeassistant.components.climate.const import (
     ATTR_HVAC_MODE,
+    ATTR_SWING_MODE,
     ATTR_TARGET_TEMP_HIGH,
     ATTR_TARGET_TEMP_LOW,
     PRESET_NONE,
@@ -94,6 +96,7 @@ from .const import (
     CONF_FAN_ON_SETPOINT_REACHED,
     CONF_FAN_ON_SETPOINT_REACHED_TOGGLE,
     CONF_FAN_COLD_TOLERANCE,
+    CONF_FAN_TOGGLE,
     CONF_FLOOR_SENSOR,
     CONF_HEAT_COOL_MODE,
     CONF_HEAT_PUMP_COOLING,
@@ -190,6 +193,7 @@ FAN_MODE_SCHEMA = {
     vol.Optional(CONF_FAN_ON_SETPOINT_REACHED): cv.boolean,
     vol.Optional(CONF_FAN_COLD_TOLERANCE): vol.Coerce(float),
     vol.Optional(CONF_FAN_ON_SETPOINT_REACHED_TOGGLE): cv.entity_id,
+    vol.Optional(CONF_FAN_TOGGLE): cv.entity_id,
 }
 
 OPENINGS_SCHEMA = {
@@ -1156,6 +1160,27 @@ class DualSmartThermostat(ClimateEntity, RestoreEntity):
         return self.features.fan_modes
 
     @property
+    def swing_mode(self) -> str | None:
+        """Return swing mode from the underlying climate actuator (passthrough)."""
+        if not self.features.supports_climate_swing_mode:
+            return None
+        entity_id = self.features.climate_actuator_entity_id
+        if entity_id is None:
+            return None
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return None
+        return state.attributes.get(ATTR_SWING_MODE)
+
+    @property
+    def swing_modes(self) -> list[str] | None:
+        """Return swing modes supported by the underlying climate actuator."""
+        if not self.features.supports_climate_swing_mode:
+            return None
+        modes = self.features.climate_swing_modes
+        return modes if modes else None
+
+    @property
     def extra_state_attributes(self) -> dict:
         """Return entity specific state attributes to be saved."""
 
@@ -1381,6 +1406,33 @@ class DualSmartThermostat(ClimateEntity, RestoreEntity):
             return
 
         await fan_device.async_set_fan_mode(fan_mode)
+        self.async_write_ha_state()
+
+    async def async_set_swing_mode(self, swing_mode: str) -> None:
+        """Set swing mode on the underlying climate actuator (passthrough)."""
+        entity_id = self.features.climate_actuator_entity_id
+        if entity_id is None or not self.features.supports_climate_swing_mode:
+            _LOGGER.warning("Cannot set swing mode: no climate actuator with swing support")
+            return
+
+        modes = self.features.climate_swing_modes
+        if swing_mode not in modes:
+            _LOGGER.warning(
+                "Invalid swing mode %s for %s. Available: %s",
+                swing_mode,
+                entity_id,
+                modes,
+            )
+            return
+
+        _LOGGER.info("Setting swing mode %s on %s", swing_mode, entity_id)
+        await self.hass.services.async_call(
+            "climate",
+            SERVICE_SET_SWING_MODE,
+            {ATTR_ENTITY_ID: entity_id, ATTR_SWING_MODE: swing_mode},
+            context=self._context,
+            blocking=True,
+        )
         self.async_write_ha_state()
 
     def _set_temperatures_dual_mode(self, temperatures: TargetTemperatures) -> None:

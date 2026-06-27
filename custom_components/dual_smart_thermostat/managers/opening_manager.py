@@ -24,6 +24,7 @@ from ..const import (
     ATTR_OPENING_TIMEOUT,
     CONF_OPENINGS,
     CONF_OPENINGS_SCOPE,
+    CONF_OPENING_SCOPE,
     TIMED_OPENING_SCHEMA,
 )
 
@@ -110,34 +111,51 @@ class OpeningManager:
     def any_opening_open(
         self, hvac_mode_scope: OpeningHvacModeScope = OpeningHvacModeScope.ALL
     ) -> bool:
-        """If any opening is currently open."""
+        """If any opening is currently open for the given HVAC mode scope."""
         _LOGGER.debug("_any_opening_open")
-        if not self.opening_entities:
+        if not self.openings:
             return False
-
-        _is_open = False
 
         _LOGGER.debug("Checking openings: %s", self.opening_entities)
         _LOGGER.debug("hvac_mode_scope: %s", hvac_mode_scope)
 
-        if (
-            # the requester doesn't care about the scope or defaultt
-            hvac_mode_scope == OpeningHvacModeScope.ALL
-            # the requester sets it's scope and it's in the scope
-            # in case of ALL, it's always in the scope
-            or (
-                self.openings_scope != [OpeningHvacModeScope.ALL]
-                and hvac_mode_scope in self.openings_scope
-            )
-            # the scope is not restricted at all
-            or OpeningHvacModeScope.ALL in self.openings_scope
-        ):
-            for opening in self.openings:
-                if self._is_opening_open(opening):
-                    _is_open = True
-                    break
+        for opening in self.openings:
+            if not self._opening_applies_to_hvac_mode(opening, hvac_mode_scope):
+                continue
+            if self._is_opening_open(opening):
+                return True
 
-        return _is_open
+        return False
+
+    @staticmethod
+    def _normalize_scopes(scope) -> List[OpeningHvacModeScope]:
+        if scope is None:
+            return [OpeningHvacModeScope.ALL]
+        if isinstance(scope, OpeningHvacModeScope):
+            return [scope]
+        if isinstance(scope, str):
+            return [OpeningHvacModeScope(scope)]
+        return [OpeningHvacModeScope(s) for s in scope]
+
+    def _get_opening_scopes(self, opening: TIMED_OPENING_SCHEMA) -> List[OpeningHvacModeScope]:  # type: ignore
+        """Return effective scope list for an opening (per-opening or global default)."""
+        if CONF_OPENING_SCOPE in opening:
+            return self._normalize_scopes(opening[CONF_OPENING_SCOPE])
+        return self.openings_scope
+
+    def _opening_applies_to_hvac_mode(
+        self,
+        opening: TIMED_OPENING_SCHEMA,  # type: ignore
+        hvac_mode_scope: OpeningHvacModeScope,
+    ) -> bool:
+        if hvac_mode_scope == OpeningHvacModeScope.ALL:
+            return True
+
+        scopes = self._get_opening_scopes(opening)
+        if OpeningHvacModeScope.ALL in scopes:
+            return True
+
+        return hvac_mode_scope in scopes
 
     def _is_opening_open(self, opening: TIMED_OPENING_SCHEMA) -> bool:  # type: ignore
         """If the opening is currently open."""
