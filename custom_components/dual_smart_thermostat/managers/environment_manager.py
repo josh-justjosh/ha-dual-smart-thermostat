@@ -122,7 +122,9 @@ class EnvironmentManager(StateManager):
         self._target_temp = config.get(CONF_TARGET_TEMP)
         self._target_temp_high = config.get(CONF_TARGET_TEMP_HIGH)
         self._target_temp_low = config.get(CONF_TARGET_TEMP_LOW)
-        self._temp_target_temperature_step = config.get(CONF_TEMP_STEP)
+        self._temp_target_temperature_step = self._coerce_optional_float(
+            config.get(CONF_TEMP_STEP)
+        )
 
         self._cold_tolerance = config.get(CONF_COLD_TOLERANCE)
         self._hot_tolerance = config.get(CONF_HOT_TOLERANCE)
@@ -135,7 +137,7 @@ class EnvironmentManager(StateManager):
         self._saved_target_temp = self.target_temp or None
         self._saved_target_temp_low = None
         self._saved_target_temp_high = None
-        self._temp_precision = config.get(CONF_PRECISION)
+        self._temp_precision = self._coerce_optional_float(config.get(CONF_PRECISION))
 
         self._temperature_unit = hass.config.units.temperature_unit
 
@@ -245,9 +247,31 @@ class EnvironmentManager(StateManager):
         _LOGGER.debug("Setting target temperature low: %s", temp)
         self._target_temp_low = temp
 
+    @staticmethod
+    def _coerce_optional_float(value) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                return None
+        return None
+
     @property
-    def target_temperature_step(self) -> float:
+    def target_temperature_step(self) -> float | None:
         return self._temp_target_temperature_step
+
+    def snap_to_temperature_step(self, temperature: float | None) -> float | None:
+        """Round a temperature to the configured step size."""
+        if temperature is None:
+            return None
+        step = self._temp_target_temperature_step
+        if step is None or step <= 0:
+            return temperature
+        return round(round(temperature / step) * step, 6)
 
     @property
     def max_temp(self) -> float:

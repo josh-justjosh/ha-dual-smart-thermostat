@@ -261,6 +261,50 @@ def get_tolerance_fields(
     return schema_dict
 
 
+def get_precision_step_fields(defaults: dict[str, Any] | None = None) -> dict[Any, Any]:
+    """Precision and temperature step fields for advanced config sections."""
+    defaults = defaults or {}
+    schema_dict = {}
+
+    precision_default = defaults.get(CONF_PRECISION)
+    if precision_default is not None:
+        precision_default = str(precision_default)
+
+    schema_dict[
+        vol.Optional(
+            CONF_PRECISION,
+            default=precision_default if precision_default is not None else "0.1",
+        )
+    ] = get_select_selector(
+        options=[
+            {"value": "0.1", "label": "0.1"},
+            {"value": "0.5", "label": "0.5"},
+            {"value": "1.0", "label": "1.0"},
+        ]
+    )
+
+    step_default = defaults.get(CONF_TEMP_STEP)
+    if step_default is not None:
+        step_default = str(float(step_default)).rstrip("0").rstrip(".")
+        if step_default == "1":
+            step_default = "1.0"
+
+    schema_dict[
+        vol.Optional(
+            CONF_TEMP_STEP,
+            default=step_default if step_default is not None else "0.5",
+        )
+    ] = get_select_selector(
+        options=[
+            {"value": "0.1", "label": "0.1"},
+            {"value": "0.5", "label": "0.5"},
+            {"value": "1.0", "label": "1.0"},
+        ]
+    )
+
+    return schema_dict
+
+
 def get_timing_fields_for_section(
     defaults: dict[str, Any] | None = None,
     include_keep_alive: bool = True,
@@ -501,14 +545,14 @@ def get_heater_cooler_schema(hass=None, defaults=None, include_name=True):
         )
     )
 
-    # Timing fields in collapsible section (less commonly changed)
-    # Heater+cooler doesn't have keep_alive
-    timing_fields = get_timing_fields_for_section(
+    # Timing and display fields in collapsible section
+    advanced_fields = get_timing_fields_for_section(
         defaults=defaults, include_keep_alive=False
     )
-    if timing_fields:
+    advanced_fields.update(get_precision_step_fields(defaults=defaults))
+    if advanced_fields:
         core_schema[vol.Optional("advanced_settings")] = section(
-            vol.Schema(timing_fields), {"collapsed": True}
+            vol.Schema(advanced_fields), {"collapsed": True}
         )
 
     return vol.Schema(core_schema)

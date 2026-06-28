@@ -603,6 +603,7 @@ class DualSmartThermostat(ClimateEntity, RestoreEntity):
 
         # environment
         self._temp_precision = precision
+        self._sync_climate_precision_attrs()
         self._target_temp = self.environment.target_temp
         self._target_temp_high = self.environment.target_temp_high
         self._target_temp_low = self.environment.target_temp_low
@@ -1032,14 +1033,34 @@ class DualSmartThermostat(ClimateEntity, RestoreEntity):
     def precision(self) -> float:
         """Return the precision of the system."""
         if self._temp_precision is not None:
-            return self._temp_precision
+            try:
+                return float(self._temp_precision)
+            except (TypeError, ValueError):
+                pass
         return super().precision
+
+    def _sync_climate_precision_attrs(self) -> None:
+        """Sync HA climate attrs used by the thermostat card for step/precision."""
+        if self._temp_precision is not None:
+            try:
+                self._attr_precision = float(self._temp_precision)
+            except (TypeError, ValueError):
+                pass
+        step = self.target_temperature_step
+        if step is not None:
+            try:
+                self._attr_target_temperature_step = float(step)
+            except (TypeError, ValueError):
+                pass
 
     @property
     def target_temperature_step(self) -> float:
         """Return the supported step of target temperature."""
         if self.environment.target_temperature_step is not None:
-            return self.environment.target_temperature_step
+            try:
+                return float(self.environment.target_temperature_step)
+            except (TypeError, ValueError):
+                pass
         # if a target_temperature_step is not defined, fallback to equal the precision
         return self.precision
 
@@ -1347,6 +1368,11 @@ class DualSmartThermostat(ClimateEntity, RestoreEntity):
         temp_low = kwargs.get(ATTR_TARGET_TEMP_LOW)
         temp_high = kwargs.get(ATTR_TARGET_TEMP_HIGH)
         hvac_mode = kwargs.get(ATTR_HVAC_MODE)
+
+        snap = self.environment.snap_to_temperature_step
+        temperature = snap(temperature)
+        temp_low = snap(temp_low)
+        temp_high = snap(temp_high)
 
         _LOGGER.debug(
             "Setting temperatures. Temp: %s, Low: %s, High: %s, Hvac Mode: %s",

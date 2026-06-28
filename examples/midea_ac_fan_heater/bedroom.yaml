@@ -26,6 +26,8 @@ climate:
 
     precision: 0.5
     target_temp_step: 0.5
+    # UI-created entities: set these under Options → Temperature step / Precision
+    # (bedroom.yaml only applies if this block is in your live configuration.yaml)
 
     cold_tolerance: 0.3
     hot_tolerance: 0.5

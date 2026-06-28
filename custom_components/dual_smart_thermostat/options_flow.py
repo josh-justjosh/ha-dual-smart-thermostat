@@ -321,8 +321,10 @@ class OptionsFlowHandler(OptionsFlow):
                 if isinstance(temp_step_raw, (int, float))
                 else temp_step_raw
             )
-            if temp_step_value not in ["0.1", "0.5", "1.0"]:
-                temp_step_value = "1.0"  # Fallback to default if invalid
+            if temp_step_value not in ["0.1", "0.5", "1.0", "1"]:
+                temp_step_value = "1.0"
+            if temp_step_value == "1":
+                temp_step_value = "1.0"
             schema_dict[vol.Optional(CONF_TEMP_STEP, default=temp_step_value)] = (
                 selector.SelectSelector(
                     selector.SelectSelectorConfig(
